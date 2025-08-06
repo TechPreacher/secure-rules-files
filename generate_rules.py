@@ -1,6 +1,6 @@
 import os
 import json
-import google.generativeai as genai
+from openai import OpenAI
 
 def generate_secure_rules_prompt(language: str, assistant: str, framework: str=None) -> str:
     """
@@ -88,12 +88,18 @@ if __name__ == "__main__":
 
     prompt_configs = technologies_data.get("prompt_configs", [])
 
-    model = genai.GenerativeModel('gemini-2.5-flash-preview-05-20')
+    client = OpenAI()  # Assumes OPENAI_API_KEY environment variable is set
 
     for lang, framework in prompt_configs:
         for assistant in assistants:
             prompt = generate_secure_rules_prompt(lang, assistant, framework)
-            response = model.generate_content(prompt)
+            response = client.chat.completions.create(
+                model="gpt-4o",
+                messages=[
+                    {"role": "user", "content": prompt}
+                ],
+                temperature=0.7
+            )
 
 
             assistant_name = assistant.lower()
@@ -109,7 +115,7 @@ if __name__ == "__main__":
             # Construct the full file path
             full_file_path = os.path.join(directory_path, filename_pattern)
 
-            rulesfile = response.text
+            rulesfile = response.choices[0].message.content
 
             # Fix common formatting issues
             if rulesfile.startswith('```mdc') or rulesfile.startswith('```markdown') or rulesfile.startswith('```'):
